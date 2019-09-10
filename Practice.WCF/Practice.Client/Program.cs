@@ -27,6 +27,11 @@ namespace Practice.Client
             using (var proxy=new ComputeClient(instanceContext))
             {
                 proxy.Add(2, 1);
+                //proxy.Add(1.0,2.0);//通信关闭
+            }
+            using (var proxy = new ComputeClient(instanceContext))
+            {
+                proxy.Add(1.0,2.0);
             }
 
 

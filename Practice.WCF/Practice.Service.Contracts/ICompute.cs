@@ -10,7 +10,10 @@ namespace Practice.Service.Contracts
     [ServiceContract(CallbackContract = typeof(ICallBack))]
     public interface ICompute
     {
-        [OperationContract(IsOneWay = true)]
+        [OperationContract(IsOneWay = true,Name = "AddDouble")]
         void Add(double x, double y);
+
+        [OperationContract(IsOneWay = true,Name = "AddInt")]
+        void Add(int x, int y);
     }
 }

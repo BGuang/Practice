@@ -11,6 +11,6 @@ namespace Practice.Service.Contracts
     public interface ICallBack
     {
         [OperationContract(IsOneWay = true)]
-        void Show(double x, double y,double result);
+        void Show(string result);
     }
 }

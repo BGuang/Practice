@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.28307.705
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogsApp", "LogsApp\LogsApp.csproj", "{BAA041DF-211B-430F-86C5-AC5099117B47}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XMLApp", "XMLApp\XMLApp.csproj", "{6ED3FE21-A972-4CCA-BF0C-0EC0CA8027EB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{BAA041DF-211B-430F-86C5-AC5099117B47}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BAA041DF-211B-430F-86C5-AC5099117B47}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BAA041DF-211B-430F-86C5-AC5099117B47}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6ED3FE21-A972-4CCA-BF0C-0EC0CA8027EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6ED3FE21-A972-4CCA-BF0C-0EC0CA8027EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6ED3FE21-A972-4CCA-BF0C-0EC0CA8027EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6ED3FE21-A972-4CCA-BF0C-0EC0CA8027EB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

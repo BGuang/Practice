@@ -37,7 +37,12 @@ namespace Practice.Service.Proxy
 
         public void Add(double x, double y)
         {
-            base.Channel.Add(x, y);
+            Channel.Add(x,y);
+        }
+
+        public void Add(int x, int y)
+        {
+            Channel.Add(x,y);
         }
     }
 }
