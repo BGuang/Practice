@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
@@ -37,17 +38,17 @@ namespace Practice.TPL
             Console.WriteLine("1.2-正确3-完成初始化：数量" + tq2.Result);//先调用Result
             Console.WriteLine("1.1-正确2-完成初始化：数量" + list2.Count);
 
-            //----------【错误写法】
+            //----------【List非线程安全对象，Lock】
             List<Product> list3 = new List<Product>();
             ParallelForEach(list2, list3);
-            Console.WriteLine("4-错误-遍历后：数量" + list3.Count);
+            Console.WriteLine("4-锁-遍历后：数量" + list3.Count);
 
             //-----------【正确写法】
-            List<Product> list4 = new List<Product>();
-            Task tq4=new Task(()=> ParallelForEach(list2, list4));
+            ConcurrentBag<Product> list4 = new ConcurrentBag<Product>();
+            Task tq4 = new Task(() => ParallelForEach(list2, list4));
             tq4.Start();
             Task.WaitAll(tq4);
-            Console.WriteLine("4-正确-遍历后：数量" + list4.Count);
+            Console.WriteLine("4-线程对象-遍历后：数量" + list4.Count);
 
             #endregion
 
@@ -57,6 +58,13 @@ namespace Practice.TPL
 
             //Parallel.For(0, productList.Count, (i, loopState) =>
             //Parallel.ForEach(productList, (model, loopState) =>{})
+            ConcurrentBag<Product> list5 = new ConcurrentBag<Product>();
+            //ParallelForEachState(list2, list5);
+            Task tq5 = new Task(() => ParallelForEachState(list2, list5));
+            tq5.Start();
+            Task.WaitAll(tq5);
+            Console.WriteLine("5-ParallelLoopState-Break-遍历后：数量" + list5.Count);
+
 
             #endregion
 
@@ -100,12 +108,46 @@ namespace Practice.TPL
             return list.Count;
         }
 
+        #region Lock与线程安全
         private void ParallelForEach(List<Product> list, List<Product> list2)
         {
             list2.Clear();
             Parallel.ForEach(list, (model) =>
             {
+                lock (list2)
+                {
+
+                    list2.Add(model);
+                }
+            });
+
+        }
+        private void ParallelForEach(List<Product> list, ConcurrentBag<Product> list2)
+        {
+            list2.Clear();
+            Parallel.ForEach(list, (model) =>
+            {
                 list2.Add(model);
+            });
+
+        }
+        #endregion
+
+        private void ParallelForEachState(List<Product> list, ConcurrentBag<Product> list2)
+        {
+            list2.Clear();
+            Parallel.ForEach(list, (model,loopstate) =>
+            {
+                if (model.SellPrice<100)
+                {
+                    list2.Add(model);
+                }
+                else
+                {
+                    //loopstate.Stop();
+                    loopstate.Break();
+                }
+                
             });
 
         }

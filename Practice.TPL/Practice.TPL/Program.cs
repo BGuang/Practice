@@ -6,8 +6,11 @@ namespace Practice.TPL
     {
         static void Main(string[] args)
         {
-            ParallelTest pt=new ParallelTest();
-            pt.Run();
+            //ParallelTest pt=new ParallelTest();
+            //pt.Run();
+
+            ConcurrentTest ct=new ConcurrentTest();
+            ct.ConcurrentDictionaryTest();
 
 
             Console.ReadKey();
