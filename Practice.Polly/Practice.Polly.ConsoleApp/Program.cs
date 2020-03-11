@@ -20,16 +20,18 @@ namespace Practice.Polly.ConsoleApp
 
             //NormalDeal();
             //PollyTest();
-            string YearMonth = "201910";
+            OnlyRecover ss=new OnlyRecover();
 
-            string _y = YearMonth.Substring(0, 4);
-            string _m = YearMonth.Substring(4, YearMonth.Length - 4);
-           var _yearmonth = _y + _m.PadLeft(2, '0');
+            ss.Retry((i,a) =>{print((i+a).ToString());},1,2);
 
-           Console.WriteLine(_yearmonth);
+           Console.WriteLine();
             Console.ReadKey();
         }
 
+        private static void print(string msg)
+        {
+            Console.WriteLine(msg);
+        }
 
         #region 常规处理
 
@@ -50,8 +52,18 @@ namespace Practice.Polly.ConsoleApp
                 {
                     Console.WriteLine($"第{counttime}次异常。{counttime * counttime}秒后重试;{DateTime.Now}");
 
+                    try
+                    {
+                        test2();
+                        
+                    }
+                    catch (Exception exception)
+                    {
+                        Console.WriteLine("nn");
+                    }
                     Thread.Sleep(counttime * counttime * 1000);
                     continue;
+
                 }
             }
 
@@ -62,7 +74,7 @@ namespace Practice.Polly.ConsoleApp
         private static int test()
         {
             count++;
-            if (count == 2)
+            if (count == 6)
             {
                 Console.WriteLine($"第{count}正常");
                 return 666;
@@ -72,6 +84,11 @@ namespace Practice.Polly.ConsoleApp
                 Console.WriteLine($"第{count}错误");
                 throw new Exception("错误" + count);
             }
+        }
+
+        private static int test2()
+        {
+            throw new Exception("内部错误" + count);
         }
         #endregion
 
