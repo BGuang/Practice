@@ -40,16 +40,17 @@ namespace Practice.RabbitMQ.Consumer
 
             //FanoutConsumer();
             //DirectConsumer();
-            TopicConsumer();
+            //TopicConsumer();
+            RPCClient();
             #endregion
 
 
             Console.ReadKey();
         }
 
-        
 
-        private static void SimpleConsumer(int secounds,string name)
+
+        private static void SimpleConsumer(int secounds, string name)
         {
             ConnectionFactory connectionFactory = new ConnectionFactory()
             {
@@ -66,15 +67,15 @@ namespace Practice.RabbitMQ.Consumer
                 {
                     //声明队列，防止消费者先启动，生产者后启动
                     channel.QueueDeclare("hiqueue", false, false, false, null);
-
-                    EventingBasicConsumer consumer=new EventingBasicConsumer(channel);
-
+                    //1.基础消费者
+                    EventingBasicConsumer consumer = new EventingBasicConsumer(channel);
+                    //2.设置接收消息的处理事件
                     consumer.Received += (ch, ea) =>
                     {
                         var message = Encoding.UTF8.GetString(ea.Body);
                         //模拟耗时逻辑
-                        Thread.Sleep(secounds*1000);
-                        if (secounds>5)
+                        Thread.Sleep(secounds * 1000);
+                        if (secounds > 5)
                         {
                             //Thread.CurrentThread.Interrupt();
                             throw new Exception("错误");
@@ -83,7 +84,7 @@ namespace Practice.RabbitMQ.Consumer
 
                         Console.WriteLine($"消费者{name}收到消息： {message}");
                     };
-                    //消费消息
+                    //3.消费消息
                     channel.BasicConsume("hiqueue", true, consumer);
                     Console.ReadKey();
                 }
@@ -123,7 +124,7 @@ namespace Practice.RabbitMQ.Consumer
                     //接收到消息事件
                     consumer.Received += (ch, ea) =>
                     {
-                        Thread.Sleep(5*1000);
+                        Thread.Sleep(5 * 1000);
                         var message = Encoding.UTF8.GetString(ea.Body);
                         Console.WriteLine($"收到消息： {message}");
                         //手动应答，默认消费者从队列获取消息就算成功，手动应当开启后则需要消费者确认成功
@@ -139,10 +140,10 @@ namespace Practice.RabbitMQ.Consumer
 
                 }
             }
-            
+
             Console.WriteLine("消费者已启动");
             Console.ReadKey();
-            
+
         }
 
         private static void FanoutConsumer()
@@ -225,6 +226,7 @@ namespace Practice.RabbitMQ.Consumer
                 //创建通道
                 using (var channel = connection.CreateModel())
                 {
+                    //服务质量
                     channel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
 
                     channel.ExchangeDeclare("hiDirect", "direct");
@@ -239,8 +241,6 @@ namespace Practice.RabbitMQ.Consumer
                                       routingKey: "onlyone");
 
                     #endregion
-
-
 
                     //事件基本消费者
                     EventingBasicConsumer consumer = new EventingBasicConsumer(channel);
@@ -267,7 +267,7 @@ namespace Practice.RabbitMQ.Consumer
 
         private static void TopicConsumer()
         {
-            //创建连接工厂，默认情况下为“ guest” /“ guest”，仅限本地主机连接
+            //1.创建连接工厂
             ConnectionFactory factory = new ConnectionFactory
             {
                 UserName = "admin", //用户名
@@ -277,40 +277,38 @@ namespace Practice.RabbitMQ.Consumer
                 Port = 32296
             };
 
-            //创建连接
+            //2.创建连接
             using (var connection = factory.CreateConnection())
             {
-                //创建通道
+                //3.创建通道
                 using (var channel = connection.CreateModel())
                 {
                     channel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
 
+                    //4.声明交换器
                     channel.ExchangeDeclare("hiTopic", "topic");
 
-
                     #region topic
-                    //模拟随机一个消费队列
-                    //var queueName = channel.QueueDeclare().QueueName;
                     string queueName = "topic-topic";
                     channel.QueueDeclare(queueName, false, false, false, null);
+                    //5.绑定交换器和routingKey
                     channel.QueueBind(queue: queueName,
                                       exchange: "hiTopic",
                                       routingKey: "*.test.#");
 
                     #endregion
 
-
-
-                    //事件基本消费者
+                    //6事件基本消费者
                     EventingBasicConsumer consumer = new EventingBasicConsumer(channel);
 
-                    //接收到消息事件
+                    //7接收到消息事件
                     consumer.Received += (ch, ea) =>
                     {
                         var message = Encoding.UTF8.GetString(ea.Body);
-                        Console.WriteLine($"收到消息： {message}");
+                        Console.WriteLine($"收到服务端响应： {message}");
                         channel.BasicAck(ea.DeliveryTag, false);
                     };
+                    //8.消费消息
                     channel.BasicConsume(queueName, false, consumer);
 
                     //保持通道
@@ -326,7 +324,7 @@ namespace Practice.RabbitMQ.Consumer
 
         private static void RPCClient()
         {
-            //创建连接工厂，默认情况下为“ guest” /“ guest”，仅限本地主机连接
+            //工厂
             ConnectionFactory factory = new ConnectionFactory
             {
                 UserName = "admin", //用户名
@@ -336,35 +334,55 @@ namespace Practice.RabbitMQ.Consumer
                 Port = 32296
             };
 
-            //创建连接
+            //连接
             using (var connection = factory.CreateConnection())
             {
-                //创建通道
+                //通道
                 using (var channel = connection.CreateModel())
                 {
-                    channel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
 
-                    channel.ExchangeDeclare("hiTopic", "topic");
-                    #region fanout
-                    //模拟随机一个消费队列
-                    //var queueName = channel.QueueDeclare().QueueName;
-                    string queueName = "topic-topic";
+                    //1.RPC客户端-服务端处理成功的回调队列
+                    string queueName = "rpc_client";
                     channel.QueueDeclare(queueName, false, false, false, null);
-                    channel.QueueBind(queue: queueName,
-                                      exchange: "hiTopic",
-                                      routingKey: "*.test.#");
+
+                    
+                    var props = channel.CreateBasicProperties();
+
+
+                    #region RPC-处理服务端回调消息
+                    //事件基本消费者
+                    EventingBasicConsumer consumer = new EventingBasicConsumer(channel);
+
+                    //处理回调消息
+                    consumer.Received += (ch, ea) =>
+                    {
+                        var message = Encoding.UTF8.GetString(ea.Body);
+                        Console.WriteLine($"客户端收到响应：响应Id:{ea.BasicProperties.CorrelationId}-内容： {message}");
+                        channel.BasicAck(ea.DeliveryTag, false);
+                    };
+                    //消费回调队列
+                    channel.BasicConsume(queueName, false, consumer);
+
 
                     #endregion
 
+                    #region RPC-调用服务端
                     string input;
                     do
                     {
                         input = Console.ReadLine();
                         var body = Encoding.UTF8.GetBytes(input);
-                        //发布消息、绑定exchange、必须设置routingKey
-                        channel.BasicPublish("hiTopic", "A.test.send.001", null, body: body);
+
+                        //每个消息有一个独立的ID
+                        props.CorrelationId = Guid.NewGuid().ToString("D");
+                        //告诉服务端处理完成后，处理结果放到ReplyTo指定的这个队列里
+                        props.ReplyTo = queueName;
+                        Console.WriteLine($"客户端发起请求：Id:{props.CorrelationId}-内容：{input}");
+                        //开始远程调用服务端队列
+                        channel.BasicPublish("", "rpc_server", props, body: body);
                     } while (input.Trim().ToLower() != "exit");
 
+                    #endregion
 
 
                 }

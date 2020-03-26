@@ -15,7 +15,8 @@ namespace Practice.RabbitMQ.Producer
             //SimpleSender();
             //FanoutSender();
             //DirectSender();
-            TopicSender();
+            //TopicSender();
+            RPCServer();
             Console.ReadKey();
         }
         /// <summary>
@@ -23,7 +24,7 @@ namespace Practice.RabbitMQ.Producer
         /// </summary>
         private static void SimpleSender()
         {
-            //创建连接工厂
+            //1.创建连接工厂
             ConnectionFactory factory = new ConnectionFactory
             {
                 UserName = "admin", //用户名
@@ -32,31 +33,28 @@ namespace Practice.RabbitMQ.Producer
                 Port = 32296
             };
 
-            //创建连接,手动释放：channel.Close();
+            //2.创建连接,手动释放：channel.Close();
             using (var connection = factory.CreateConnection())
             {
-                //创建通道，可收到释放：connection.Close();
+                //3.创建通道，可收到释放：connection.Close();
                 using (var channel = connection.CreateModel())
                 {
-
-
-                    //声明一个队列
+                    //4.声明一个队列
                     channel.QueueDeclare(
                         queue: "hiqueue", //队列名
-                        durable: false,
-                        exclusive: false,
-                        autoDelete: false,
+                        durable: false,//持久化
+                        exclusive: false,//是否互斥，互斥则只有这个连接可以访问此队列
+                        autoDelete: false,//连接断开后是否删除队列
                         arguments: null);
 
-                    Console.WriteLine("\nRabbitMQ连接成功，请输入发布消息，输入exit退出！");
+                    Console.WriteLine("\nRabbitMQ发送端连接成功，请输入发布消息，输入exit退出！");
 
                     string input;
                     do
                     {
                         input = Console.ReadLine();
-                        //Body是一堆字节码
-                        var body = Encoding.UTF8.GetBytes(input);
-                        //发布消息
+                        var body = Encoding.UTF8.GetBytes(input);//Body是一堆字节码
+                        //5.发布消息
                         channel.BasicPublish("", "hiqueue", null, body: body);
                     } while (input.Trim().ToLower() != "exit");
                 }
@@ -107,11 +105,11 @@ namespace Practice.RabbitMQ.Producer
         }
 
         /// <summary>
-        /// Direct模式
+        /// Direct模式、单播
         /// </summary>
         private static void DirectSender()
         {
-            //创建连接工厂
+            //1.创建连接工厂
             ConnectionFactory factory = new ConnectionFactory
             {
                 UserName = "admin", //用户名
@@ -120,17 +118,13 @@ namespace Practice.RabbitMQ.Producer
                 Port = 32296
             };
 
-            //创建连接,手动释放：channel.Close();
+            //2.创建连接,手动释放：channel.Close();
             using (var connection = factory.CreateConnection())
             {
-                //创建通道，可收到释放：connection.Close();
+                //3.创建通道，可收到释放：connection.Close();
                 using (var channel = connection.CreateModel())
                 {
-
-
-                    //声明一个队列
-                    //channel.QueueDeclare(queue: "hiqueue",durable: false,exclusive: false,autoDelete: false,arguments: null);
-
+                    //4.交换器
                     channel.ExchangeDeclare("hiDirect", "direct");
 
                     Console.WriteLine("\nRabbitMQ-direct连接成功，请输入发布消息，输入exit退出！");
@@ -140,7 +134,7 @@ namespace Practice.RabbitMQ.Producer
                     {
                         input = Console.ReadLine();
                         var body = Encoding.UTF8.GetBytes(input);
-                        //发布消息、绑定exchange、必须设置routingKey
+                        //5.发布消息、Direct绑定exchange、必须设置routingKey
                         channel.BasicPublish("hiDirect", "onlyone", null, body: body);
                     } while (input.Trim().ToLower() != "exit");
                 }
@@ -162,17 +156,13 @@ namespace Practice.RabbitMQ.Producer
                 Port = 32296
             };
 
-            //创建连接,手动释放：channel.Close();
+            //创建连接
             using (var connection = factory.CreateConnection())
             {
-                //创建通道，可收到释放：connection.Close();
+                //创建通道
                 using (var channel = connection.CreateModel())
                 {
-
-
-                    //声明一个队列
-                    //channel.QueueDeclare(queue: "hiqueue",durable: false,exclusive: false,autoDelete: false,arguments: null);
-
+                    //1.声明交换机
                     channel.ExchangeDeclare("hiTopic", "topic");
 
                     Console.WriteLine("\nRabbitMQ-topic连接成功，请输入发布消息，输入exit退出！");
@@ -182,7 +172,7 @@ namespace Practice.RabbitMQ.Producer
                     {
                         input = Console.ReadLine();
                         var body = Encoding.UTF8.GetBytes(input);
-                        //发布消息、绑定exchange、必须设置routingKey
+                        //2.发布消息、绑定exchange、设置routingKey
                         channel.BasicPublish("hiTopic", "A.test.send.001", null, body: body);
                     } while (input.Trim().ToLower() != "exit");
                 }
@@ -204,32 +194,44 @@ namespace Practice.RabbitMQ.Producer
                 Port = 32296
             };
 
-            //创建连接,手动释放：channel.Close();
+            //创建连接
             using (var connection = factory.CreateConnection())
             {
-                //创建通道，可收到释放：connection.Close();
+                //创建通道
                 using (var channel = connection.CreateModel())
                 {
+                    //服务质量
+                    channel.BasicQos(0, 1, false);
 
+                    //1.声明服务端队列-接收客户端请求
+                    string serverQueueName = "rpc_server";
+                    channel.QueueDeclare(queue: serverQueueName,durable: false,exclusive: false,autoDelete: false,arguments: null);
+                    
+                    Console.WriteLine("RPC_Server连接成功，等待处理消息！");
 
-                    //声明一个队列
-                    //channel.QueueDeclare(queue: "hiqueue",durable: false,exclusive: false,autoDelete: false,arguments: null);
-
-                    channel.ExchangeDeclare("hiTopic", "topic");
-
-                    Console.WriteLine("\nRabbitMQ-topic连接成功，请输入发布消息，输入exit退出！");
-
-                    //事件基本消费者
+                    //2.事件基本消费者
                     EventingBasicConsumer consumer = new EventingBasicConsumer(channel);
 
-                    //接收到消息事件
+                    //3.接收到消息事件
                     consumer.Received += (ch, ea) =>
                     {
+                        //3.1服务端调用本地服务
                         var message = Encoding.UTF8.GetString(ea.Body);
-                        Console.WriteLine($"收到消息： {message}");
+                        var result = $"【响应】服务端已处理消息：Id:{ea.BasicProperties.CorrelationId}-内容：{message}";
+                        Console.WriteLine($"服务端收到客户端消息： {message}并处理");
+
+                        //3.2服务端响应结果
+                        var props = ea.BasicProperties;
+                        var replyprops=channel.CreateBasicProperties();
+                        replyprops.CorrelationId = props.CorrelationId;
+                        //发送：服务端处理结果
+                        channel.BasicPublish("",props.ReplyTo,replyprops, Encoding.UTF8.GetBytes(result.ToString()));
+
+                        //消费应答
                         channel.BasicAck(ea.DeliveryTag, false);
                     };
-                    channel.BasicConsume(queueName, false, consumer);
+                    //4.消费消息
+                    channel.BasicConsume(serverQueueName, false, consumer);
 
                     //保持通道
                     Console.ReadKey();
