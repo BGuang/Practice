@@ -16,7 +16,8 @@ namespace Practice.RabbitMQ.Producer
             //FanoutSender();
             //DirectSender();
             //TopicSender();
-            RPCServer();
+            //RPCServer();
+            TransTopicSender();
             Console.ReadKey();
         }
         /// <summary>
@@ -236,6 +237,132 @@ namespace Practice.RabbitMQ.Producer
                     //保持通道
                     Console.ReadKey();
                     
+                }
+            }
+        }
+
+
+        private static void TransTopicSender()
+        {
+            //创建连接工厂
+            ConnectionFactory factory = new ConnectionFactory
+            {
+                UserName = "admin", //用户名
+                Password = "admin", //密码
+                HostName = "192.168.11.201", //rabbitmq ip
+                Port = 32296
+            };
+
+            //创建连接
+            using (var connection = factory.CreateConnection())
+            {
+                //创建通道
+                using (var channel = connection.CreateModel())
+                {
+                    //1.声明交换机
+                    channel.ExchangeDeclare("hiTopic", "topic");
+
+                    Console.WriteLine("\nRabbitMQ-topic连接成功，请输入发布消息，输入exit退出！");
+
+                    string input;
+                    do
+                    {
+                        input = Console.ReadLine();
+                        var body = Encoding.UTF8.GetBytes(input);
+
+                       //消费的必须是手动应答才可以事务
+                        try
+                        {
+                            //开启事务
+                            channel.TxSelect();
+                            channel.BasicPublish("hiTopic", "A.test.send.001", null, body: body);
+                            if (input=="0")
+                            {
+                                throw new Exception("出错拉");
+                            }
+
+                            //提交事务
+                            channel.TxCommit();
+                        }
+                        catch (Exception e)
+                        {
+                            //回滚事务
+                            channel.TxRollback();
+                        }
+
+                    } while (input.Trim().ToLower() != "exit");
+                }
+            }
+        }
+
+
+        private static void ConfirmTopicSender()
+        {
+            //创建连接工厂
+            ConnectionFactory factory = new ConnectionFactory
+            {
+                UserName = "admin", //用户名
+                Password = "admin", //密码
+                HostName = "192.168.11.201", //rabbitmq ip
+                Port = 32296
+            };
+
+            //创建连接
+            using (var connection = factory.CreateConnection())
+            {
+                //创建通道
+                using (var channel = connection.CreateModel())
+                {
+                    //1.声明交换机
+                    channel.ExchangeDeclare("hiTopic", "topic");
+
+                    Console.WriteLine("\nRabbitMQ-topic连接成功，请输入发布消息，输入exit退出！");
+
+                    //启动确认
+                    channel.ConfirmSelect();
+
+                    string input;
+                    do
+                    {
+                        input = Console.ReadLine();
+                        var body = Encoding.UTF8.GetBytes(input);
+                        channel.BasicPublish("hiTopic", "A.test.send.001", null, body: body);
+                        //1.单条确认，返回bool类型
+                        if (channel.WaitForConfirms())
+                        {
+                            Console.WriteLine("发布成功");
+                        }
+                        //2.批量确认
+                        for (int i = 0; i < 100; i++)
+                        {
+                            channel.BasicPublish("hiTopic", "A.test.send.001", null, body: body);
+
+                        }
+                        //批量确认存在失败则会抛出异常
+                        channel.WaitForConfirmsOrDie();
+
+                        //3.异步确认
+                        for (int i = 0; i < 100; i++)
+                        {
+                            channel.BasicPublish("hiTopic", "A.test.send.001", null, body: body);
+
+                        }
+                        //批量确认存在失败则会抛出异常
+                        //这两个事件如果是using写法要写到创建交换器和队列并且进行绑定之前，否则不会触发
+                        channel.BasicNacks += (sender, e) =>
+                        {
+                            //生产者发送消息到broker（服务器）后失败被生产者的listener监听到，就走无应答方法
+                            Console.WriteLine(" --no ack-- ");
+                        };
+
+                        channel.BasicAcks += (sender, e) =>
+                        {
+                            //有应答
+                            Console.WriteLine(" --ack-- ");
+                        };
+
+
+                    } while (input.Trim().ToLower() != "exit");
                 }
             }
         }

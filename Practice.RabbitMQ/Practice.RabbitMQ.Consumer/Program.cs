@@ -40,8 +40,8 @@ namespace Practice.RabbitMQ.Consumer
 
             //FanoutConsumer();
             //DirectConsumer();
-            //TopicConsumer();
-            RPCClient();
+            TopicConsumer();
+            //RPCClient();
             #endregion
 
 
@@ -392,6 +392,8 @@ namespace Practice.RabbitMQ.Consumer
             Console.ReadKey();
 
         }
+
+
 
     }
 }
